@@ -1,0 +1,255 @@
+/*
+++
+¦¦ACF Dynamic Kiosk Script
+¦¦Version 2.10 - 09/10/15
+++
+*/
+
+using System;
+using QFlow.Library;
+using System.Collections.Generic;
+
+namespace QFlow.Scripting
+{
+    internal class ReceptionPointProfileScript
+    {
+        private const byte _universalTimeout = 30;
+        private const byte _errorTimeout = 10;
+        private const byte _thanksTimeout = 7;
+        private const string _thanksPage = "pagina6";
+        private const string _errorPage = "Error";
+        private const string _resetCommand = "cmdResetSession";
+        private const string _enqueueCommand = "enqueue";
+
+        public static ScriptResults Command(ref ReceptionPointState rpState, string commandName, string commandArgument)
+        {
+            try
+            {
+                if (commandName.StartsWith(_enqueueCommand, StringComparison.CurrentCultureIgnoreCase))
+                {
+                    Enqueue(ref rpState, Convert.ToInt16(commandArgument), _thanksPage, _thanksTimeout);
+                    return new ScriptResults();
+                }
+                if (commandName.StartsWith(_resetCommand, StringComparison.CurrentCultureIgnoreCase))
+                {
+                    rpState.ResetSession();
+                    return new ScriptResults();
+                }
+
+
+                rpState.GotoPage(commandName, _universalTimeout);
+            }
+            catch (Exception ex)
+            {
+                EventLogEntry log = new EventLogEntry(EventLogEntryType.Error, "Reception Point " + rpState.ReceptionPointId,
+                    "Kiosk error: " + ex.Message + Environment.NewLine + ex.Source + Environment.NewLine + ex.StackTrace, 0, 0);
+                EventLog.Write(ref log);
+                rpState.SessionParameters.Set("Error", ex.Message);
+                rpState.SessionParameters.Set("Source", ex.Source);
+                rpState.GotoPage(_errorPage, _errorTimeout);
+            }
+            return new ScriptResults();
+        }
+
+        public static ScriptResults Input(ref ReceptionPointState rpState, string data, string source)
+        {
+            ScriptResults rs = new ScriptResults();
+            Customer oCustomer = null;
+
+            if (rpState.CurrentPageKey == "pagina3")
+            {
+                try
+                {
+                    oCustomer = Customer.Get(data, 0);
+                    rpState.SessionParameters.Set("IDCliente", oCustomer.Id.ToString());
+                }
+                catch (Exception ex)
+                {
+
+                    SaveLog("Kiosko", "Error en busqueda de cliente: " + ex.Message + " datavalue: " + data, EventLogEntryType.Error);
+                }
+                rpState.GotoPage("pagina4", _universalTimeout);
+            }
+            else if (rpState.CurrentPageKey == "pagina5")  {
+                rpState.SessionParameters.Set("Telefono", data);
+                rpState.GotoPage("pagina6", _universalTimeout);
+            }
+
+           
+            return rs;
+        }
+
+        private static void Enqueue(ref ReceptionPointState rpState, short serviceId, string goToPage, short timeout)
+        {
+            ServiceEnqueueResults res = null;
+            List<int> cid = null;
+            int customerId = 0;
+
+            int.TryParse(rpState.SessionParameters.Get("IDCliente"), out customerId);
+
+
+            res = Service.Enqueue(
+                serviceId, //ServiceId
+                rpState.ReceptionPointId, //ReceptionPointID
+                0, //userId
+                customerId, //customerId
+                rpState.CurrentLanguageCode, //languageCode
+                String.Empty, //subject
+                String.Empty, //extRef
+                String.Empty, //notes
+                ref cid, //classificationIds
+                true, //printTicket
+                0, 0, 0, 0);
+
+            rpState.SessionParameters.Set("QCode", res.QCode);
+            rpState.SessionParameters.Set("QNumber", res.QNumber.ToString());
+            rpState.GotoPage(goToPage, timeout);
+        }
+
+
+        static bool tracemode = true;
+        /// <summary>
+        /// Write a Qflow event log, use the tracemode variable to enable or disable the verbose mode
+        /// </summary>
+        /// <param name="source">Contains the source of the event log</param>
+        /// <param name="message">Contains the message that will be stored in the vent log, this must be descriptive enough</param>
+        /// <param name="type">Contains the event type, this could be: Informative, Warning o Error</param>
+        private static void SaveLog(string source, string message, EventLogEntryType type)
+        {
+            EventLogEntry eventLogEntry;
+            if (tracemode || type == EventLogEntryType.Error)
+            {
+                eventLogEntry = new EventLogEntry(type, source, message, 0, 0);
+                QFlow.Library.EventLog.Write(ref eventLogEntry);
+            }
+        }
+    }
+}
+
+---------------------------------------------------------------------------------------
+
+/*
+++
+¦¦ACF Dynamic Kiosk Script
+¦¦Version 2.10 - 09/10/15
+++
+*/
+
+using System;
+using QFlow.Library;
+using System.Collections.Generic;
+
+namespace QFlow.Scripting
+{
+    internal class ReceptionPointProfileScript
+    {
+        private const byte _universalTimeout = 30;
+        private const byte _errorTimeout = 10;
+        private const byte _thanksTimeout = 7;
+        private const string _thanksPage = "PGRACIAS";
+        private const string _errorPage = "Error";
+        private const string _resetCommand = "cmdResetSession";
+        private const string _enqueueCommand = "enqueue";
+
+        public static ScriptResults Command(ref ReceptionPointState rpState, string commandName, string commandArgument)
+        {
+            try
+            {
+                if (commandName.StartsWith(_enqueueCommand, StringComparison.CurrentCultureIgnoreCase))
+                {
+                    Enqueue(ref rpState, Convert.ToInt16(commandArgument), _thanksPage, _thanksTimeout);
+                    return new ScriptResults();
+                }
+                if (commandName.StartsWith(_resetCommand, StringComparison.CurrentCultureIgnoreCase))
+                {
+                    rpState.ResetSession();
+                    return new ScriptResults();
+                }
+
+                if (commandName == "consultar_saldo")
+                {
+                    // lamar web service
+
+                    return new ScriptResults();
+                }
+
+
+                rpState.GotoPage(commandName, _universalTimeout);
+            }
+            catch (Exception ex)
+            {
+                EventLogEntry log = new EventLogEntry(EventLogEntryType.Error, "Reception Point " + rpState.ReceptionPointId,
+                    "Kiosk error: " + ex.Message + Environment.NewLine + ex.Source + Environment.NewLine + ex.StackTrace, 0, 0);
+                EventLog.Write(ref log);
+                rpState.SessionParameters.Set("Error", ex.Message);
+                rpState.SessionParameters.Set("Source", ex.Source);
+                rpState.GotoPage(_errorPage, _errorTimeout);
+            }
+            return new ScriptResults();
+        }
+
+        public static ScriptResults Input(ref ReceptionPointState rpState, string data, string source)
+        {
+            ScriptResults rs = new ScriptResults();
+            Customer oCustomer = null;
+
+            try
+            {
+                oCustomer = Customer.Get(data, 0);
+                rpState.SessionParameters.Set("IDCliente", oCustomer.Id.ToString());
+            }
+            catch (Exception ex)
+            {
+
+                SaveLog("Kiosko", "Error en busqueda de cliente: " + ex.Message + " datavalue: " + data, EventLogEntryType.Error);
+            }
+            rpState.GotoPage("PAG2", _universalTimeout);
+            return rs;
+        }
+
+        private static void Enqueue(ref ReceptionPointState rpState, short serviceId, string goToPage, short timeout)
+        {
+            ServiceEnqueueResults res = null;          
+            List<int> cid = null;
+            int customerId = 0;
+
+            int.TryParse(rpState.SessionParameters.Get("IDCliente"), out customerId);
+
+
+            res = Service.Enqueue(
+                serviceId, //ServiceId
+                rpState.ReceptionPointId, //ReceptionPointID
+                0, //userId
+                customerId, //customerId
+                rpState.CurrentLanguageCode, //languageCode
+                String.Empty, //subject
+                String.Empty, //extRef
+                String.Empty, //notes
+                ref cid, //classificationIds
+                true, //printTicket
+                0, 0, 0, 0);
+
+            rpState.SessionParameters.Set("QCode", res.QCode);
+            rpState.SessionParameters.Set("QNumber", res.QNumber.ToString());
+            rpState.GotoPage(goToPage, timeout);
+        }
+
+
+        static bool tracemode = true;
+        /// <summary>
+        /// Write a Qflow event log, use the tracemode variable to enable or disable the verbose mode
+        /// </summary>
+        /// <param name="source">Contains the source of the event log</param>
+        /// <param name="message">Contains the message that will be stored in the vent log, this must be descriptive enough</param>
+        /// <param name="type">Contains the event type, this could be: Informative, Warning o Error</param>
+        private static void SaveLog(string source, string message, EventLogEntryType type)
+        {
+            EventLogEntry eventLogEntry;
+            if (tracemode || type == EventLogEntryType.Error)
+            {
+                eventLogEntry = new EventLogEntry(type, source, message, 0, 0);
+                QFlow.Library.EventLog.Write(ref eventLogEntry);
+            }
+        }
+    }
+}
